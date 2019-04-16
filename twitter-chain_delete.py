@@ -41,9 +41,6 @@ class get_Login:
 		self.root.mainloop()
 
 	def get_creds(self):
-		# self.usrname = self.f.get()
-		# self.pwd = self.e.get()
-		# print(self.usrname, self.pwd)
 		globals()["username"] = self.f.get()
 		globals()["password"] = self.e.get()
 
@@ -85,8 +82,40 @@ class verification_code:
 
 app = verification_code()
 
+class go_to_account:
+	def __init__(self):
+		self.root = Tk()
+		self.label = Label(self.root, text="Enter the screenname you want to scrape followers from:")
+		self.label.pack(side=TOP)
+		self.label.pack()
+		self.f = Label(self.root, text="@")
+		self.f.pack(side="left")
+		self.g = Entry(self.root)
+		self.g.pack(side="left")
+		self.button = Button(self.root, text="Go", command=self.enter_verification)
+		self.button.pack(side="right")
+		self.root.mainloop()
+
+	def enter_verification(self):
+		global TOTAL_FOLLOWERS
+		screenname = self.g.get()
+		driver.get(f"https://twitter.com/{screenname.strip()}/followers")
+		driver.implicitly_wait(1)
+
+		response = driver.page_source
+		tree = html.fromstring(response)
+		xpath = tree.xpath('//*[@id="page-container"]/div[1]/div/div[2]/div/div/div[2]/div/div/ul/li[3]/a/span[3]')
+		soup = BeautifulSoup(etree.tostring(xpath[0], xml_declaration=True))
+		TOTAL_FOLLOWERS = int(soup.span.attrs['data-count'])
+		# driver.find_element_by_xpath('//*[@id="email_challenge_submit"]').click()
+
+		self.root.destroy()
+
+app = go_to_account()
+
 class Check_names(tk.Tk):
 	def __init__(self, *args, **kwargs):
+		global TOTAL_FOLLOWERS
 		############################################
 		############Initialize the GUI#############
 		###########################################
@@ -98,8 +127,8 @@ class Check_names(tk.Tk):
 		self.progress.pack()
 
 		self.bytes = 0.
-		self.maxbytes = 67.*50.
-		# self.progressvar=0
+		self.maxbytes = TOTAL_FOLLOWERS
+		self.progressvar=0
 		self.progress["maximum"] = self.maxbytes
 		self.label = Label(self, text="Starting up...")
 		self.label.pack()
@@ -107,6 +136,10 @@ class Check_names(tk.Tk):
 		############################################
 
 		def twitter_login(self):#name_search(self):
+			global TOTAL_FOLLOWERS
+			#############################
+			#some stuff got deleted here#
+			#############################
 			screen = 1
 			last_height = driver.execute_script("return document.body.scrollHeight")
 			screennames = []
@@ -115,24 +148,21 @@ class Check_names(tk.Tk):
 				while True:
 					print(screen)
 					response = driver.page_source
-					# print("b")
 					tree = html.fromstring(response)
 					for prof in np.arange(6)+1:
-						# print(prof)
-						# print("a")
-						# print("b.5")
 						xpath = tree.xpath("/html/body/div[2]/div[2]/div/div[2]/div/div/div[2]/div/div[2]/div[2]/div[2]/div["+str(screen)+"]/div["+str(prof)+"]/div/div")
-						# print("c")
 						soup = BeautifulSoup(etree.tostring(xpath[0], xml_declaration=True))
-						# print("d")
 						usr_id = soup.div['data-user-id']
-						# print("e")
 						screenname = soup.div['data-screen-name']
 						# except IndexError:
 						# 	usr_id = ""
 						print(screenname, usr_id)
 						screennames.append([screenname, usr_id])
 						csv_writer.writerow([usr_id])
+						profs_so_far = int(progressvar.get())
+						progressvar.set(progressvar.get()+1)
+						self.label.configure(text = "{} of {} ({:.3%}): {}".format(profs_so_far, TOTAL_FOLLOWERS, profs_so_far/TOTAL_FOLLOWERS, screenname)) #update the text in self.label
+						self.update()
 					driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
 					progressvar.set(len(screennames))
 					self.update()
